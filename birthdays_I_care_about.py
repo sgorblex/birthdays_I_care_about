@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import os.path
+from sys import argv
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -62,13 +63,17 @@ def main():
         events_to_remove = []
         people_to_remove = set()
         existing_birthdays = set()
-        for event in cal_events:
-            person = event["summary"].removeprefix("🎂 ")
-            if person not in people_I_care_about:
-                events_to_remove.append(event)
-                people_to_remove.add(person)
-            else:
-                existing_birthdays.add(person)
+        if "--clean" in argv:
+            events_to_remove = cal_events
+            people_to_remove = "everyone"
+        else:
+            for event in cal_events:
+                person = event["summary"].removeprefix("🎂 ")
+                if person not in people_I_care_about:
+                    events_to_remove.append(event)
+                    people_to_remove.add(person)
+                else:
+                    existing_birthdays.add(person)
         print(f"Removing birthdays of {people_to_remove}")
         for event in events_to_remove:
             service.events().delete(calendarId=cal, eventId=event["id"]).execute()
