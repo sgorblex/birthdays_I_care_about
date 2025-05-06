@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with birthdays_I_care_about. If not, see <https://www.gnu.org/licenses/>.
 
-
 from datetime import datetime
 import os.path
 from sys import argv
@@ -30,24 +29,58 @@ from googleapiclient.errors import HttpError
 
 calendar_name = "🎂"
 people_I_care_about_file = "people_I_care_about.txt"
+people_I_care_about_labels = ["7e5ebbbd08286e82"]
 
 credentials_file = "credentials.json"
 token_file = "token.json"
 
-gapi_perms = ["https://www.googleapis.com/auth/calendar"]
+gapi_scopes = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts.readonly"]
 
-people_I_care_about = set()
-if not os.path.exists(people_I_care_about_file):
-    print(f"Cannot find whitelist file ({people_I_care_about_file})")
-    exit(1)
-with open(people_I_care_about_file, 'r') as file:
-    people_I_care_about = set(line.strip() for line in file)
+def people_I_care_about_from_file():
+    people_I_care_about = set()
+    if not os.path.exists(people_I_care_about_file):
+        print(f"Cannot find people file ({people_I_care_about_file})")
+        exit(1)
+    with open(people_I_care_about_file, 'r') as file:
+        people_I_care_about = set(line.strip() for line in file)
+    return people_I_care_about
+
+
+def people_I_care_about_from_contacts(creds):
+    labels_I_care_about = {f"contactGroups/{string}" for string in people_I_care_about_labels}
+    people_I_care_about = set()
+    try:
+        people_client = build("people", "v1", credentials=creds)
+
+        results = (
+            people_client.people()
+            .connections()
+            .list(
+                resourceName="people/me",
+                pageSize=1000,
+                personFields="names,memberships",
+                sortOrder="FIRST_NAME_ASCENDING",
+            )
+            .execute()
+        )
+        connections = results.get("connections", [])
+
+        for person in connections:
+            names = person.get("names", [])
+            if names:
+                name = names[0].get("displayName")
+                membershipz = [member.get("contactGroupMembership", []).get("contactGroupResourceName") for member in person.get("memberships", [])]
+                if not labels_I_care_about.isdisjoint(membershipz):
+                    people_I_care_about.add(name)
+        return people_I_care_about
+    except HttpError as error:
+        print("An error occurred: %s" % error)
 
 
 def main():
     creds = None
     if os.path.exists(token_file):
-        creds = Credentials.from_authorized_user_file(token_file, gapi_perms)
+        creds = Credentials.from_authorized_user_file(token_file, gapi_scopes)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -55,16 +88,18 @@ def main():
             if not os.path.exists(credentials_file):
                 print(f"You need to put your Google API credentials in {credentials_file}")
                 exit(1)
-            flow = InstalledAppFlow.from_client_secrets_file(credentials_file, gapi_perms)
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_file, gapi_scopes)
             creds = flow.run_local_server(port=0)
         with open(token_file, 'w') as token:
             token.write(creds.to_json())
 
+    people_I_care_about = people_I_care_about_from_contacts(creds)
+
     try:
-        service = build("calendar", "v3", credentials=creds)
+        calendar_client = build("calendar", "v3", credentials=creds)
 
         print("CALENDAR LIST")
-        calendars = service.calendarList().list().execute()["items"]
+        calendars = calendar_client.calendarList().list().execute()["items"]
 
         print("GET CUSTOM CALENDAR")
         cal = None
@@ -73,11 +108,11 @@ def main():
         except StopIteration:
             print("Custom calendar not found. Now creating it")
             calendar = {"summary": calendar_name}
-            cal = service.calendars().insert(body=calendar).execute()["id"]
+            cal = calendar_client.calendars().insert(body=calendar).execute()["id"]
             print(f"Calendar {calendar_name} created")
 
         print("INSPECT CUSTOM CALENDAR")
-        cal_events = service.events().list(calendarId=cal).execute()["items"]
+        cal_events = calendar_client.events().list(calendarId=cal).execute()["items"]
         events_to_remove = []
         people_to_remove = set()
         existing_birthdays = set()
@@ -94,7 +129,7 @@ def main():
                     existing_birthdays.add(person)
         print(f"Removing birthdays of {people_to_remove}")
         for event in events_to_remove:
-            service.events().delete(calendarId=cal, eventId=event["id"]).execute()
+            calendar_client.events().delete(calendarId=cal, eventId=event["id"]).execute()
 
         print("GET BIRTHDAY EVENTS")
         birthcal_id = "addressbook#contacts@group.v.calendar.google.com"
@@ -103,7 +138,7 @@ def main():
         time_lower = datetime(current_year, 1, 1).isoformat()+'Z'
         time_upper = datetime(current_year+1, 1, 1).isoformat()+'Z'
 
-        birthdays = service.events().list(calendarId=birthcal_id, timeMin=time_lower, timeMax=time_upper, orderBy="startTime", singleEvents=True).execute()["items"]
+        birthdays = calendar_client.events().list(calendarId=birthcal_id, timeMin=time_lower, timeMax=time_upper, orderBy="startTime", singleEvents=True).execute()["items"]
         print("ADD BIRTHDAYS TO NEW CAL")
         people_I_may_add = people_I_care_about-existing_birthdays
         for birthday in birthdays:
@@ -116,7 +151,7 @@ def main():
                     "end": birthday["end"],
                     "recurrence": ["RRULE:FREQ=YEARLY;WKST=TU"],
                 }
-                service.events().insert(calendarId=cal, body=event).execute()
+                calendar_client.events().insert(calendarId=cal, body=event).execute()
 
     except HttpError as error:
         print("An error occurred: %s" % error)
