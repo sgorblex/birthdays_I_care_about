@@ -28,8 +28,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 calendar_name = "🎂"
-people_I_care_about_file = "people_I_care_about.txt"
-people_I_care_about_labels = ["7e5ebbbd08286e82"]
+people_i_care_about_file = "people_I_care_about.txt"
+people_i_care_about_labels = ["7e5ebbbd08286e82"]
 
 credentials_file = "credentials.json"
 token_file = "token.json"
@@ -37,19 +37,19 @@ token_file = "token.json"
 gapi_scopes = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts.readonly"]
 
 
-def people_I_care_about_from_file():
-    people_I_care_about = set()
-    if not os.path.exists(people_I_care_about_file):
-        print(f"Cannot find people file ({people_I_care_about_file})")
+def people_i_care_about_from_file():
+    people_i_care_about = set()
+    if not os.path.exists(people_i_care_about_file):
+        print(f"Cannot find people file ({people_i_care_about_file})")
         exit(1)
-    with open(people_I_care_about_file) as file:
-        people_I_care_about = set(line.strip() for line in file)
-    return people_I_care_about
+    with open(people_i_care_about_file) as file:
+        people_i_care_about = set(line.strip() for line in file)
+    return people_i_care_about
 
 
-def people_I_care_about_from_contacts(creds):
-    labels_I_care_about = {f"contactGroups/{string}" for string in people_I_care_about_labels}
-    people_I_care_about = set()
+def people_i_care_about_from_contacts(creds):
+    labels_i_care_about = {f"contactGroups/{string}" for string in people_i_care_about_labels}
+    people_i_care_about = set()
     try:
         people_client = build("people", "v1", credentials=creds)
 
@@ -71,11 +71,12 @@ def people_I_care_about_from_contacts(creds):
             if names:
                 name = names[0].get("displayName")
                 membershipz = [member.get("contactGroupMembership", []).get("contactGroupResourceName") for member in person.get("memberships", [])]
-                if not labels_I_care_about.isdisjoint(membershipz):
-                    people_I_care_about.add(name)
-        return people_I_care_about
+                if not labels_i_care_about.isdisjoint(membershipz):
+                    people_i_care_about.add(name)
+        return people_i_care_about
     except HttpError as error:
-        print("An error occurred: %s" % error)
+        print(f"An error occurred: {error}")
+        return set()
 
 
 def main():
@@ -94,7 +95,7 @@ def main():
         with open(token_file, "w") as token:
             token.write(creds.to_json())
 
-    people_I_care_about = people_I_care_about_from_contacts(creds)
+    people_i_care_about = people_i_care_about_from_contacts(creds)
 
     try:
         calendar_client = build("calendar", "v3", credentials=creds)
@@ -123,7 +124,7 @@ def main():
         else:
             for event in cal_events:
                 person = event["summary"].removeprefix("🎂 ")
-                if person not in people_I_care_about:
+                if person not in people_i_care_about:
                     events_to_remove.append(event)
                     people_to_remove.add(person)
                 else:
@@ -141,10 +142,10 @@ def main():
 
         birthdays = calendar_client.events().list(calendarId=birthcal_id, timeMin=time_lower, timeMax=time_upper, orderBy="startTime", singleEvents=True).execute()["items"]
         print("ADD BIRTHDAYS TO NEW CAL")
-        people_I_may_add = people_I_care_about - existing_birthdays
+        people_i_may_add = people_i_care_about - existing_birthdays
         for birthday in birthdays:
             person = birthday["gadget"]["preferences"]["goo.contactsFullName"]
-            if person in people_I_may_add:
+            if person in people_i_may_add:
                 print(f"Adding {person}'s birthday")
                 event = {
                     "summary": "🎂 " + person,
@@ -155,7 +156,7 @@ def main():
                 calendar_client.events().insert(calendarId=cal, body=event).execute()
 
     except HttpError as error:
-        print("An error occurred: %s" % error)
+        print(f"An error occurred: {error}")
 
 
 if __name__ == "__main__":
