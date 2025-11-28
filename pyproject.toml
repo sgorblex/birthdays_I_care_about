@@ -14,7 +14,24 @@ dependencies = [
 dev = [
     "mypy (>=1.18.2,<2.0.0)",
     "ruff (>=0.14.4,<0.15.0)",
+    "google-api-python-client-stubs",
+    "google-auth-oauthlib-stubs",
 ]
+
+[tool.mypy]
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "google_auth_oauthlib.*",
+    "google_auth_oauthlib.flow",
+]
+ignore_missing_imports = true
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "googleapiclient.discovery"
+disable_error_code = ["attr-defined"]
 
 [tool.ruff]
 line-length = 200
