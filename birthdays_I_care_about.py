@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with birthdays_I_care_about. If not, see <https://www.gnu.org/licenses/>.
 
-from datetime import datetime
 import os.path
+from datetime import datetime
 from sys import argv
 
 from google.auth.transport.requests import Request
@@ -36,12 +36,13 @@ token_file = "token.json"
 
 gapi_scopes = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts.readonly"]
 
+
 def people_I_care_about_from_file():
     people_I_care_about = set()
     if not os.path.exists(people_I_care_about_file):
         print(f"Cannot find people file ({people_I_care_about_file})")
         exit(1)
-    with open(people_I_care_about_file, 'r') as file:
+    with open(people_I_care_about_file) as file:
         people_I_care_about = set(line.strip() for line in file)
     return people_I_care_about
 
@@ -90,7 +91,7 @@ def main():
                 exit(1)
             flow = InstalledAppFlow.from_client_secrets_file(credentials_file, gapi_scopes)
             creds = flow.run_local_server(port=0)
-        with open(token_file, 'w') as token:
+        with open(token_file, "w") as token:
             token.write(creds.to_json())
 
     people_I_care_about = people_I_care_about_from_contacts(creds)
@@ -104,7 +105,7 @@ def main():
         print("GET CUSTOM CALENDAR")
         cal = None
         try:
-            cal = next((d for d in calendars if d["summary"] == calendar_name))["id"]
+            cal = next(d for d in calendars if d["summary"] == calendar_name)["id"]
         except StopIteration:
             print("Custom calendar not found. Now creating it")
             calendar = {"summary": calendar_name}
@@ -135,18 +136,18 @@ def main():
         birthcal_id = "addressbook#contacts@group.v.calendar.google.com"
 
         current_year = datetime.now().year
-        time_lower = datetime(current_year, 1, 1).isoformat()+'Z'
-        time_upper = datetime(current_year+1, 1, 1).isoformat()+'Z'
+        time_lower = datetime(current_year, 1, 1).isoformat() + "Z"
+        time_upper = datetime(current_year + 1, 1, 1).isoformat() + "Z"
 
         birthdays = calendar_client.events().list(calendarId=birthcal_id, timeMin=time_lower, timeMax=time_upper, orderBy="startTime", singleEvents=True).execute()["items"]
         print("ADD BIRTHDAYS TO NEW CAL")
-        people_I_may_add = people_I_care_about-existing_birthdays
+        people_I_may_add = people_I_care_about - existing_birthdays
         for birthday in birthdays:
             person = birthday["gadget"]["preferences"]["goo.contactsFullName"]
             if person in people_I_may_add:
                 print(f"Adding {person}'s birthday")
                 event = {
-                    "summary": "🎂 "+person,
+                    "summary": "🎂 " + person,
                     "start": birthday["start"],
                     "end": birthday["end"],
                     "recurrence": ["RRULE:FREQ=YEARLY;WKST=TU"],
