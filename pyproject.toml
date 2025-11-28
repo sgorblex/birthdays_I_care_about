@@ -1,0 +1,19 @@
+[project]
+name = "birthdays-i-care-about"
+version = "0.1.0"
+description = "Script to automatically add birthday events to Google Calendar for selected contacts"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy (>=1.18.2,<2.0.0)",
+    "ruff (>=0.14.4,<0.15.0)",
+]
+
+[tool.ruff]
+line-length = 200
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "B", "UP"]
