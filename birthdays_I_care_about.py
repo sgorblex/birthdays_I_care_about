@@ -20,6 +20,7 @@
 import os.path
 from datetime import datetime
 from sys import argv
+from typing import Any
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -37,8 +38,8 @@ token_file = "token.json"
 gapi_scopes = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts.readonly"]
 
 
-def people_i_care_about_from_file():
-    people_i_care_about = set()
+def people_i_care_about_from_file() -> set[str]:
+    people_i_care_about: set[str] = set()
     if not os.path.exists(people_i_care_about_file):
         print(f"Cannot find people file ({people_i_care_about_file})")
         exit(1)
@@ -47,13 +48,13 @@ def people_i_care_about_from_file():
     return people_i_care_about
 
 
-def people_i_care_about_from_contacts(creds):
-    labels_i_care_about = {f"contactGroups/{string}" for string in people_i_care_about_labels}
-    people_i_care_about = set()
+def people_i_care_about_from_contacts(creds: Credentials) -> set[str]:
+    labels_i_care_about: set[str] = {f"contactGroups/{string}" for string in people_i_care_about_labels}
+    people_i_care_about: set[str] = set()
     try:
-        people_client = build("people", "v1", credentials=creds)
+        people_client: Any = build("people", "v1", credentials=creds)
 
-        results = (
+        results: Any = (
             people_client.people()
             .connections()
             .list(
@@ -64,23 +65,28 @@ def people_i_care_about_from_contacts(creds):
             )
             .execute()
         )
-        connections = results.get("connections", [])
+        connections: list[dict[str, Any]] = results.get("connections", [])
 
         for person in connections:
             names = person.get("names", [])
             if names:
                 name = names[0].get("displayName")
-                membershipz = [member.get("contactGroupMembership", []).get("contactGroupResourceName") for member in person.get("memberships", [])]
-                if not labels_i_care_about.isdisjoint(membershipz):
-                    people_i_care_about.add(name)
+                if name:
+                    memberships = person.get("memberships", [])
+                    membershipz: list[str | None] = [
+                        member.get("contactGroupMembership", {}).get("contactGroupResourceName")
+                        for member in memberships
+                    ]
+                    if not labels_i_care_about.isdisjoint(membershipz):
+                        people_i_care_about.add(name)
         return people_i_care_about
     except HttpError as error:
         print(f"An error occurred: {error}")
         return set()
 
 
-def main():
-    creds = None
+def main() -> None:
+    creds: Credentials | None = None
     if os.path.exists(token_file):
         creds = Credentials.from_authorized_user_file(token_file, gapi_scopes)
     if not creds or not creds.valid:
@@ -92,46 +98,67 @@ def main():
                 exit(1)
             flow = InstalledAppFlow.from_client_secrets_file(credentials_file, gapi_scopes)
             creds = flow.run_local_server(port=0)
+        if creds is None:
+            print("Failed to obtain credentials")
+            exit(1)
         with open(token_file, "w") as token:
             token.write(creds.to_json())
+
+    if creds is None:
+        print("Failed to obtain credentials")
+        exit(1)
 
     people_i_care_about = people_i_care_about_from_contacts(creds)
 
     try:
-        calendar_client = build("calendar", "v3", credentials=creds)
+        calendar_client: Any = build("calendar", "v3", credentials=creds)
 
         print("CALENDAR LIST")
-        calendars = calendar_client.calendarList().list().execute()["items"]
+        calendar_list_response: Any = calendar_client.calendarList().list().execute()
+        calendars: list[Any] = calendar_list_response.get("items", [])
 
         print("GET CUSTOM CALENDAR")
-        cal = None
+        cal: str | None = None
         try:
-            cal = next(d for d in calendars if d["summary"] == calendar_name)["id"]
+            cal = next(d for d in calendars if d.get("summary") == calendar_name).get("id")
         except StopIteration:
             print("Custom calendar not found. Now creating it")
-            calendar = {"summary": calendar_name}
-            cal = calendar_client.calendars().insert(body=calendar).execute()["id"]
+            calendar: Any = {"summary": calendar_name}
+            calendar_response: Any = calendar_client.calendars().insert(body=calendar).execute()
+            cal = calendar_response.get("id")
+            if cal is None:
+                print("Failed to get calendar ID from response")
+                return
             print(f"Calendar {calendar_name} created")
 
+        if cal is None:
+            print("Failed to get or create calendar")
+            return
+
         print("INSPECT CUSTOM CALENDAR")
-        cal_events = calendar_client.events().list(calendarId=cal).execute()["items"]
-        events_to_remove = []
-        people_to_remove = set()
-        existing_birthdays = set()
+        events_response: Any = calendar_client.events().list(calendarId=cal).execute()
+        cal_events: list[Any] = events_response.get("items", [])
+        events_to_remove: list[Any] = []
+        people_to_remove: set[str] | str = set()
+        existing_birthdays: set[str] = set()
         if "--clean" in argv:
             events_to_remove = cal_events
             people_to_remove = "everyone"
         else:
-            for event in cal_events:
-                person = event["summary"].removeprefix("🎂 ")
-                if person not in people_i_care_about:
-                    events_to_remove.append(event)
-                    people_to_remove.add(person)
+            for cal_event in cal_events:
+                summary = cal_event.get("summary", "")
+                person_name: str = summary.removeprefix("🎂 ")
+                if person_name not in people_i_care_about:
+                    events_to_remove.append(cal_event)
+                    if isinstance(people_to_remove, set):
+                        people_to_remove.add(person_name)
                 else:
-                    existing_birthdays.add(person)
+                    existing_birthdays.add(person_name)
         print(f"Removing birthdays of {people_to_remove}")
-        for event in events_to_remove:
-            calendar_client.events().delete(calendarId=cal, eventId=event["id"]).execute()
+        for event_to_delete in events_to_remove:
+            event_id = event_to_delete.get("id")
+            if event_id:
+                calendar_client.events().delete(calendarId=cal, eventId=event_id).execute()
 
         print("GET BIRTHDAY EVENTS")
         birthcal_id = "addressbook#contacts@group.v.calendar.google.com"
@@ -140,20 +167,23 @@ def main():
         time_lower = datetime(current_year, 1, 1).isoformat() + "Z"
         time_upper = datetime(current_year + 1, 1, 1).isoformat() + "Z"
 
-        birthdays = calendar_client.events().list(calendarId=birthcal_id, timeMin=time_lower, timeMax=time_upper, orderBy="startTime", singleEvents=True).execute()["items"]
+        birthdays_response: Any = calendar_client.events().list(calendarId=birthcal_id, timeMin=time_lower, timeMax=time_upper, orderBy="startTime", singleEvents=True).execute()
+        birthdays: list[Any] = birthdays_response.get("items", [])
         print("ADD BIRTHDAYS TO NEW CAL")
         people_i_may_add = people_i_care_about - existing_birthdays
         for birthday in birthdays:
-            person = birthday["gadget"]["preferences"]["goo.contactsFullName"]
-            if person in people_i_may_add:
-                print(f"Adding {person}'s birthday")
-                event = {
-                    "summary": "🎂 " + person,
-                    "start": birthday["start"],
-                    "end": birthday["end"],
+            gadget = birthday.get("gadget", {})
+            preferences = gadget.get("preferences", {})
+            birthday_person = preferences.get("goo.contactsFullName")
+            if birthday_person and birthday_person in people_i_may_add:
+                print(f"Adding {birthday_person}'s birthday")
+                new_event: Any = {
+                    "summary": "🎂 " + birthday_person,
+                    "start": birthday.get("start", {}),
+                    "end": birthday.get("end", {}),
                     "recurrence": ["RRULE:FREQ=YEARLY;WKST=TU"],
                 }
-                calendar_client.events().insert(calendarId=cal, body=event).execute()
+                calendar_client.events().insert(calendarId=cal, body=new_event).execute()
 
     except HttpError as error:
         print(f"An error occurred: {error}")
