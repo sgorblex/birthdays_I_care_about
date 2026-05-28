@@ -1,2 +1,14 @@
 [tools]
 uv = "latest"
+
+[tasks.setup]
+description = "Install Python dependencies"
+run = "uv sync --all-groups"
+
+[tasks.check]
+description = "Ruff + mypy"
+run = ["uv run ruff check .", "uv run ruff format --check .", "uv run mypy ."]
+
+[tasks.fix]
+description = "Ruff auto-fix + format, then mypy (types are not auto-fixed)"
+run = ["uv run ruff check . --fix", "uv run ruff format .", "uv run mypy ."]
