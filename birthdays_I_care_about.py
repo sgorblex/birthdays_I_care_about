@@ -18,7 +18,7 @@
 # along with birthdays_I_care_about. If not, see <https://www.gnu.org/licenses/>.
 
 import os.path
-from datetime import datetime
+from datetime import UTC, datetime
 from sys import argv
 from typing import Any
 
@@ -39,13 +39,11 @@ gapi_scopes = ["https://www.googleapis.com/auth/calendar", "https://www.googleap
 
 
 def people_i_care_about_from_file() -> set[str]:
-    people_i_care_about: set[str] = set()
     if not os.path.exists(people_i_care_about_file):
         print(f"Cannot find people file ({people_i_care_about_file})")
         exit(1)
     with open(people_i_care_about_file) as file:
-        people_i_care_about = set(line.strip() for line in file)
-    return people_i_care_about
+        return {line.strip() for line in file}
 
 
 def people_i_care_about_from_contacts(creds: Credentials) -> set[str]:
@@ -73,10 +71,7 @@ def people_i_care_about_from_contacts(creds: Credentials) -> set[str]:
                 name = names[0].get("displayName")
                 if name:
                     memberships = person.get("memberships", [])
-                    membershipz: list[str | None] = [
-                        member.get("contactGroupMembership", {}).get("contactGroupResourceName")
-                        for member in memberships
-                    ]
+                    membershipz: list[str | None] = [member.get("contactGroupMembership", {}).get("contactGroupResourceName") for member in memberships]
                     if not labels_i_care_about.isdisjoint(membershipz):
                         people_i_care_about.add(name)
         return people_i_care_about
@@ -88,10 +83,10 @@ def people_i_care_about_from_contacts(creds: Credentials) -> set[str]:
 def main() -> None:
     creds: Credentials | None = None
     if os.path.exists(token_file):
-        creds = Credentials.from_authorized_user_file(token_file, gapi_scopes)
+        creds = Credentials.from_authorized_user_file(token_file, gapi_scopes)  # type: ignore[no-untyped-call]
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            creds.refresh(Request())  # type: ignore[no-untyped-call]
         else:
             if not os.path.exists(credentials_file):
                 print(f"You need to put your Google API credentials in {credentials_file}")
@@ -163,9 +158,9 @@ def main() -> None:
         print("GET BIRTHDAY EVENTS")
         birthcal_id = "addressbook#contacts@group.v.calendar.google.com"
 
-        current_year = datetime.now().year
-        time_lower = datetime(current_year, 1, 1).isoformat() + "Z"
-        time_upper = datetime(current_year + 1, 1, 1).isoformat() + "Z"
+        current_year = datetime.now(UTC).year
+        time_lower = datetime(current_year, 1, 1, tzinfo=UTC).isoformat().replace("+00:00", "Z")
+        time_upper = datetime(current_year + 1, 1, 1, tzinfo=UTC).isoformat().replace("+00:00", "Z")
 
         birthdays_response: Any = calendar_client.events().list(calendarId=birthcal_id, timeMin=time_lower, timeMax=time_upper, orderBy="startTime", singleEvents=True).execute()
         birthdays: list[Any] = birthdays_response.get("items", [])
