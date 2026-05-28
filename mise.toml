@@ -1,5 +1,10 @@
 [tools]
-uv = "latest"
+python = "3.14.5"
+uv = "0.11.16"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+UV_PYTHON = { value = "{{ tools.python.path }}", tools = true }
 
 [tasks.setup]
 description = "Install Python dependencies"
