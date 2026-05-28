@@ -17,3 +17,10 @@ run = ["uv run ruff check .", "uv run ruff format --check .", "uv run mypy ."]
 [tasks.fix]
 description = "Ruff auto-fix + format, then mypy (types are not auto-fixed)"
 run = ["uv run ruff check . --fix", "uv run ruff format .", "uv run mypy ."]
+
+[tasks.clean]
+description = "Remove .venv, caches, and local package metadata"
+run = [
+  "rm -rf .venv .mypy_cache .ruff_cache .pytest_cache",
+  "rm -rf ./*.egg-info 2>/dev/null || true",
+]
