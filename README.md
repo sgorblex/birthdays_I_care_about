@@ -11,15 +11,21 @@ git clone https://github.com/sgorblex/birthdays_I_care_about
 cd birthdays_I_care_about
 ```
 
-Install the Python dependencies (and Python if you don't have it)
+Install Python, [uv](https://docs.astral.sh/uv/) and the dependencies with [mise](https://mise.jdx.dev/)
 ```sh
-pip install -r requirements.txt
+mise install
+mise run setup
 ```
+(or, with just uv, `uv sync`)
 
 Set up a [Google Cloud](https://console.cloud.google.com/) project and install the Google Calendar API on it. You may also follow guides like the "Set up your environment" section from [this one](https://developers.google.com/calendar/api/quickstart/python?hl=en). It's full of them on the Internet.
 
 Once you have `credentials.json` put it in the current directory.
 
-The game is done! On the first run it should let you log in with a Google account.
+The game is done! Run it with
+```sh
+uv run ./birthdays_I_care_about.py
+```
+On the first run it should let you log in with a Google account.
 
 Remember to hide from your calendars the ugly default one and show off your shiny new one :)
