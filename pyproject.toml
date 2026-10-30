@@ -12,10 +12,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "mypy (>=1.18.2,<2.0.0)",
-    "ruff (>=0.14.4,<0.15.0)",
-    "google-api-python-client-stubs",
-    "google-auth-oauthlib-stubs",
+    "google-api-python-client-stubs>=1.39.0",
+    "google-auth-oauthlib-stubs>=1.2.0",
+    "mypy>=1.20.2,<2",
+    "ruff>=0.14.14,<0.15",
 ]
 
 [tool.ruff]
@@ -24,7 +24,7 @@ line-length = 200
 [tool.ruff.lint]
 select = [
   "A", "ANN", "B", "C4", "DTZ", "E", "EXE", "F", "FA", "I", "ICN", "ISC", "LOG", "N",
-  "PIE", "PLE", "PLW", "PT", "PYI", "Q", "RET", "RSE", "RUF", "SIM", "SLF", "SLOT", "TCH",
+  "PIE", "PLE", "PLW", "PT", "PYI", "Q", "RET", "RSE", "RUF", "SIM", "SLF", "SLOT", "TC",
   "TID", "UP", "W", "YTT",
 ]
 
@@ -33,22 +33,9 @@ allow-star-arg-any = false
 suppress-none-returning = false
 
 [tool.mypy]
-disallow_any_generics = true
-disallow_incomplete_defs = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-disallow_untyped_defs = true
-extra_checks = true
-no_implicit_optional = true
-pretty = true
-show_error_codes = true
 strict = true
-strict_concatenate = true
-warn_redundant_casts = true
-warn_return_any = true
 warn_unreachable = true
-warn_unused_ignores = true
+pretty = true
 
 [[tool.mypy.overrides]]
 module = [

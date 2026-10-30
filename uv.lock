@@ -48,10 +48,10 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "google-api-python-client-stubs" },
-    { name = "google-auth-oauthlib-stubs" },
-    { name = "mypy", specifier = ">=1.18.2,<2.0.0" },
-    { name = "ruff", specifier = ">=0.14.4,<0.15.0" },
+    { name = "google-api-python-client-stubs", specifier = ">=1.39.0" },
+    { name = "google-auth-oauthlib-stubs", specifier = ">=1.2.0" },
+    { name = "mypy", specifier = ">=1.20.2,<2" },
+    { name = "ruff", specifier = ">=0.14.14,<0.15" },
 ]
 
 [[package]]
