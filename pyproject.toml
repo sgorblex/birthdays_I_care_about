@@ -3,7 +3,7 @@ name = "birthdays-i-care-about"
 version = "0.1.0"
 description = "Script to automatically add birthday events to Google Calendar for selected contacts"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.15"
 dependencies = [
     "google-api-python-client>=2.187.0",
     "google-auth-httplib2>=0.2.1",
