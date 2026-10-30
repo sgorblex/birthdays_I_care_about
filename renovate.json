@@ -1,0 +1,61 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "automerge": true,
+  "automergeStrategy": "squash",
+  "platformAutomerge": true,
+  "dependencyDashboard": true,
+  "dependencyDashboardApproval": true,
+  "description": [
+    "Updates are opened from the dependency dashboard, so opening a PR stays manual and `automerge` finishes the job. `platformAutomerge` hands the merge to GitHub's native auto-merge, which waits only for required checks: the `check` workflow must stay required on `master` for this to be safe.",
+    "`vulnerabilityAlerts` skips dashboard approval, so it keeps a person in front of the merge."
+  ],
+  "minimumReleaseAge": "7 days",
+  "vulnerabilityAlerts": {
+    "automerge": false
+  },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "matchManagers": ["pep621"],
+      "groupName": "Python dependencies (uv)",
+      "rangeStrategy": "update-lockfile",
+      "minimumReleaseAge": null,
+      "description": "Constraints are open `>=`, so every release is already in range and the default strategy proposes nothing. `update-lockfile` turns updates into named PRs that touch only `uv.lock`. No soak: `uv lock --upgrade-package` takes no version and resolves to the newest release anyway, so a soak would only make the target and the result disagree."
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["mypy", "ruff", "/-stubs$/"],
+      "groupName": "lint toolchain (expect new diagnostics)",
+      "description": "These change ruff/mypy diagnostics with no source change, so they are kept apart from the runtime group to make new findings attributable to the PR that introduced them."
+    },
+    {
+      "matchManagers": ["mise"],
+      "groupName": "mise tool versions",
+      "lockFileMaintenance": {
+        "enabled": false
+      },
+      "description": "No mise.lock here, so lock file maintenance would only leave a permanently pending dashboard row. Fallback name for tools added later; python and uv are regrouped by package name below."
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchPackageNames": ["python", "python/cpython"],
+      "groupName": "python (mise, .python-version)",
+      "description": "mise.toml resolves to `python/cpython` (github-tags) while .python-version is read by the pyenv manager as `python`; matching both names keeps one version in both files. requires-python in pyproject.toml is left to be raised by hand."
+    },
+    {
+      "matchPackageNames": ["uv", "astral-sh/uv"],
+      "groupName": "uv (mise)",
+      "description": "mise.toml resolves uv to `astral-sh/uv` (github-releases); `matchPackageNames` matches the package name, not the dep name."
+    }
+  ]
+}
