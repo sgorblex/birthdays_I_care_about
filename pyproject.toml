@@ -5,17 +5,17 @@ description = "Script to automatically add birthday events to Google Calendar fo
 readme = "README.md"
 requires-python = ">=3.15"
 dependencies = [
-    "google-api-python-client>=2.187.0",
-    "google-auth-httplib2>=0.2.1",
-    "google-auth-oauthlib>=1.2.3",
+    "google-api-python-client>=2.201.0",
+    "google-auth-httplib2>=0.4.4",
+    "google-auth-oauthlib>=1.5.0",
 ]
 
 [dependency-groups]
 dev = [
-    "google-api-python-client-stubs>=1.39.0",
+    "google-api-python-client-stubs>=1.40.0",
     "google-auth-oauthlib-stubs>=1.2.0",
-    "mypy>=1.20.2,<2",
-    "ruff>=0.14.14,<0.15",
+    "mypy>=2.4.1,<3",
+    "ruff>=0.17.3,<0.18",
 ]
 
 [tool.ruff]
