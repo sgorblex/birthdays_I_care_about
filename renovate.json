@@ -8,11 +8,11 @@
   "dependencyDashboardApproval": true,
   "description": [
     "Updates are opened from the dependency dashboard, so opening a PR stays manual and `automerge` finishes the job. `platformAutomerge` hands the merge to GitHub's native auto-merge, which waits only for required checks: the `check` workflow must stay required on `master` for this to be safe.",
-    "`vulnerabilityAlerts` skips dashboard approval, so it keeps a person in front of the merge."
+    "Security fixes skip dashboard approval and the release-age soak and are merged automatically once `check` passes, majors included (`vulnerabilityAlerts` overrides the major-update rule below)."
   ],
   "minimumReleaseAge": "7 days",
   "vulnerabilityAlerts": {
-    "automerge": false
+    "automerge": true
   },
   "lockFileMaintenance": {
     "enabled": true
